@@ -10,6 +10,13 @@ import (
 	_ "github.com/lib/pq"
 )
 
+//Names of the queues used in our process
+const (
+	createUsersQueue = "CREATE_USER"
+	updateUsersQueue = "UPDATE_USER"
+	deleteUsersQueue = "DELETE_USER"
+)
+
 func main() {
 	cache := Cache{Enable: true}
 	flag.StringVar(
