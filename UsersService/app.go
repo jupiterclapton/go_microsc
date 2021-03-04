@@ -24,7 +24,7 @@ type App struct {
 //Initialize create the DB connection + prepares all the routes
 func (a *App) Initialize(cache Cache, db *sqlx.DB) {
 	a.Cache = cache
-	a.DB = a.DB
+	a.DB = db
 	a.Router = mux.NewRouter()
 	a.initializeRoutes()
 }
