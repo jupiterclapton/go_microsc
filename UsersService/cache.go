@@ -7,27 +7,29 @@ import (
 	redigo "github.com/garyburd/redigo/redis"
 )
 
+//Pool is
 type Pool interface {
-	Get () redigo.Conn
+	Get() redigo.Conn
 }
 
+//Cache is
 type Cache struct {
-	Enable			bool
-	MaxIdle			int
-	MaxActive		int
-	IdleTimeoutSecs	int
-	Address			string
-	Auth			string
-	DB				string
-	Pool			*redigo.Pool
+	Enable          bool
+	MaxIdle         int
+	MaxActive       int
+	IdleTimeoutSecs int
+	Address         string
+	Auth            string
+	DB              string
+	Pool            *redigo.Pool
 }
 
 // NewCachePool return a new instance of the redis pool
-func (cache *Cache) NewCachePool () *redigo.Pool {
+func (cache *Cache) NewCachePool() *redigo.Pool {
 	if cache.Enable {
-		pool := &redigo.Pool {
-			MaxIdle: cache.MaxIdle,
-			MaxActive: cache.MaxActive,
+		pool := &redigo.Pool{
+			MaxIdle:     cache.MaxIdle,
+			MaxActive:   cache.MaxActive,
 			IdleTimeout: time.Second * time.Duration(cache.IdleTimeoutSecs),
 			Dial: func() (redigo.Conn, error) {
 				c, err := redigo.Dial("tcp", cache.Address)

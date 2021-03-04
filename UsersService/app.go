@@ -14,13 +14,16 @@ import (
 	_ "github.com/lib/pq"
 )
 
+//App is the struct with app config values
 type App struct {
 	DB     *sqlx.DB
 	Router *mux.Router
+	Cache  Cache
 }
 
-//Create the DB connection + prepares all the routes
-func (a *App) Initialize(db *sqlx.DB) {
+//Initialize create the DB connection + prepares all the routes
+func (a *App) Initialize(cache Cache, db *sqlx.DB) {
+	a.Cache = cache
 	a.DB = a.DB
 	a.Router = mux.NewRouter()
 	a.initializeRoutes()
@@ -35,7 +38,7 @@ func (a *App) initializeRoutes() {
 	a.Router.HandleFunc("/user/{id:[0-9]+}", a.deleteUser).Methods("DELETE")
 }
 
-//activates negroni - passes the router to it - activates the server Go native
+//Run activates negroni - passes the router to it - activates the server Go native
 func (a *App) Run(addr string) {
 	n := negroni.Classic()
 	n.UseHandler(a.Router)
@@ -66,6 +69,13 @@ func (a *App) getUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if value, err := a.Cache.getValue(id); err == nil && len(value) != 0 {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(value))
+		return
+	}
+
 	user := User{ID: id}
 	if err := user.get(a.DB); err != nil {
 		switch err {
@@ -76,7 +86,16 @@ func (a *App) getUser(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	respondWithJSON(w, http.StatusOK, user)
+
+	response, _ := json.Marshal(user)
+	if err := a.Cache.setValue(user.ID, response); err != nil {
+		respondWithJSON(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	w.Header().Set("Content-type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(response)
 }
 
 func (a *App) getUsers(w http.ResponseWriter, r *http.Request) {
@@ -99,7 +118,7 @@ func (a *App) getUsers(w http.ResponseWriter, r *http.Request) {
 	respondWithJSON(w, http.StatusOK, users)
 }
 
-func (a *App) createUser(w hhtp.ResponseWriter, r *http.Request) {
+func (a *App) createUser(w http.ResponseWriter, r *http.Request) {
 	var user User
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&user); err != nil {
