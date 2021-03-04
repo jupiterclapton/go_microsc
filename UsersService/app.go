@@ -3,7 +3,6 @@ package main
 import (
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -127,8 +126,16 @@ func (a *App) createUser(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	if err := user.create(a.DB); err != nil {
-		fmt.Println(err.Error())
+	//get sequence from Postgres
+	a.DB.Get(&user.ID, "SELECT nextval('users_id_seq')")
+
+	JSONByte, _ := json.Marshal(user)
+	if err := a.Cache.setValue(user.ID, string(JSONByte)); err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	if err := a.Cache.enqueueValue(createUsersQueue, user.ID); err != nil {
 		respondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
