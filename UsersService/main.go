@@ -18,6 +18,7 @@ const (
 )
 
 func main() {
+	var numWorkers int
 	cache := Cache{Enable: true}
 	flag.StringVar(
 		&cache.Address,
@@ -60,6 +61,12 @@ func main() {
 		60,
 		"Redis timeout in seconds",
 	)
+	flag.IntVar(
+		&numWorkers,
+		"num_workers",
+		10,
+		"Number of workers to consume queue",
+	)
 	flag.Parse()
 	cache.Pool = cache.NewCachePool()
 	connectionString := fmt.Sprintf(
@@ -73,6 +80,10 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	go UsersToDB(numWorkers, db, cache, createUsersQueue)
+	go UsersToDB(numWorkers, db, cache, updateUsersQueue)
+	go UsersToDB(numWorkers, db, cache, deleteUsersQueue)
 
 	a := App{}
 	a.Initialize(cache, db)
